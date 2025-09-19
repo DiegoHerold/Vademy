@@ -24,7 +24,7 @@ export default async function EditPage({ params }: EditPageProps) {
   const session = await getServerSession(authOptions)
 
   // Buscar o repositório
-  const repository = await prisma.manualRepo.findFirst({
+  const repository = await prisma.repository.findFirst({
     where: {
       slug: decodeURIComponent(repo),
       owner: {

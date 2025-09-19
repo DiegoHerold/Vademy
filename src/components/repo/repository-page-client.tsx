@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, FileText, Lock, Globe } from 'lucide-react';
 
-type PageType = {
+type GuideType = {
   id: string;
   title: string;
-  path: string;
+  slug: string;
   order: number;
   createdAt: Date;
   updatedAt: Date;
@@ -29,9 +29,9 @@ type Repository = {
     username: string;
     name: string | null;
   };
-  pages: PageType[];
+  guides: GuideType[];
   _count: {
-    pages: number;
+    guides: number;
   };
 };
 
@@ -62,7 +62,14 @@ export function RepositoryPageClient({
           <div className="sticky top-6 space-y-4">
             <PageSidebar
               repository={repository}
-              pages={repository.pages}
+              pages={repository.guides.map(guide => ({
+                id: guide.id,
+                title: guide.title,
+                path: guide.slug + '.md',
+                order: guide.order,
+                createdAt: guide.createdAt,
+                updatedAt: guide.updatedAt
+              }))}
               currentPagePath={currentPagePath}
               isOwner={isOwner}
               onNewPage={handleNewPage}
@@ -104,10 +111,10 @@ export function RepositoryPageClient({
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Páginas</span>
+                    <span className="text-muted-foreground">Guias</span>
                     <span className="flex items-center gap-1">
                       <FileText className="h-3 w-3" />
-                      {repository._count.pages}
+                      {repository._count.guides}
                     </span>
                   </div>
                   

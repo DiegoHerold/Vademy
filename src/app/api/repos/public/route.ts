@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         orderBy = { starsCount: 'desc' }
     }
 
-    const repos = await prisma.manualRepo.findMany({
+    const repos = await prisma.repository.findMany({
       where: {
         visibility: 'PUBLIC'
       },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            pages: true
+            guides: true
           }
         }
       },
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       skip: offset
     })
 
-    const totalCount = await prisma.manualRepo.count({
+    const totalCount = await prisma.repository.count({
       where: {
         visibility: 'PUBLIC'
       }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       description: repo.description,
       visibility: repo.visibility,
       starsCount: repo.starsCount,
-      pagesCount: repo._count.pages,
+      pagesCount: repo._count.guides,
       owner: repo.owner,
       createdAt: repo.createdAt,
       updatedAt: repo.updatedAt

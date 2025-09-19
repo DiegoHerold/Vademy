@@ -28,16 +28,16 @@ interface Repository {
     username: string;
   };
   _count: {
-    pages: number;
+    guides: number;
   };
 }
 
-interface Page {
+interface Guide {
   id: string;
   title: string;
-  path: string;
+  slug: string;
   updatedAt: Date;
-  repo: {
+  repository: {
     name: string;
     slug: string;
     owner: {
@@ -48,7 +48,7 @@ interface Page {
 
 interface UserNavProps {
   repositories: Repository[];
-  pages: Page[];
+  pages: Guide[];
   username: string;
   className?: string;
 }
@@ -65,11 +65,11 @@ export function UserNav({ repositories, pages, username, className }: UserNavPro
     );
   }, [repositories, searchQuery]);
 
-  // Filtrar páginas
-  const filteredPages = useMemo(() => {
-    return pages.filter(page =>
-      page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      page.repo.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filtrar guias
+  const filteredGuides = useMemo(() => {
+    return pages.filter(guide =>
+      guide.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      guide.repository.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [pages, searchQuery]);
 
@@ -112,7 +112,7 @@ export function UserNav({ repositories, pages, username, className }: UserNavPro
             className="h-7 px-3 text-xs"
           >
             <BookOpen className="h-3 w-3 mr-1" />
-            Páginas ({filteredPages.length})
+            Guias ({filteredGuides.length})
           </Button>
         </div>
 
@@ -142,7 +142,7 @@ export function UserNav({ repositories, pages, username, className }: UserNavPro
                         </p>
                       )}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{repo._count.pages} páginas</span>
+                        <span>{repo._count.guides} guias</span>
                         <span>•</span>
                         <span>{new Date(repo.updatedAt).toLocaleDateString('pt-BR')}</span>
                       </div>
@@ -153,30 +153,30 @@ export function UserNav({ repositories, pages, username, className }: UserNavPro
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredPages.map((page) => (
+              {filteredGuides.map((guide) => (
                 <Link
-                  key={page.id}
-                  href={`/${page.repo.owner.username}/${page.repo.slug}?path=${encodeURIComponent(page.path)}`}
+                  key={guide.id}
+                  href={`/${guide.repository.owner.username}/${guide.repository.slug}?path=${encodeURIComponent(guide.slug)}`}
                   className="block p-2 rounded-md hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-start gap-2">
                     <BookOpen className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm truncate">{page.title}</span>
-                        {page.path === 'README.md' && (
+                        <span className="font-medium text-sm truncate">{guide.title}</span>
+                        {guide.slug === 'readme' && (
                           <Badge variant="secondary" className="text-xs">
                             README
                           </Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mb-1">
-                        {page.repo.name}
+                        {guide.repository.name}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>/{page.path}</span>
+                        <span>/{guide.slug}</span>
                         <span>•</span>
-                        <span>{new Date(page.updatedAt).toLocaleDateString('pt-BR')}</span>
+                        <span>{new Date(guide.updatedAt).toLocaleDateString('pt-BR')}</span>
                       </div>
                     </div>
                   </div>
@@ -188,7 +188,7 @@ export function UserNav({ repositories, pages, username, className }: UserNavPro
 
         {/* Estado vazio */}
         {((activeTab === 'repos' && filteredRepos.length === 0) || 
-          (activeTab === 'pages' && filteredPages.length === 0)) && (
+          (activeTab === 'pages' && filteredGuides.length === 0)) && (
           <div className="text-center py-6 text-muted-foreground">
             {activeTab === 'repos' ? (
               <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />

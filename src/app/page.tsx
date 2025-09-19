@@ -2,32 +2,63 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Code, GitBranch, Users } from 'lucide-react';
+import { BookOpen, Code, GitBranch, Users, Library, FolderOpen } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
-import RepoCard from '@/components/repo-card';
 
-type PopularRepo = {
+type LibraryWithStats = {
   id: string
   name: string
   slug: string
   description: string | null
-  visibility: 'PUBLIC' | 'PRIVATE'
+  icon: string | null
+  color: string | null
+  _count: {
+    repositories: number
+  }
+}
+
+type PopularRepository = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
   starsCount: number
-  createdAt: Date
-  updatedAt: Date
   owner: {
     username: string
     name: string | null
   }
+  library: {
+    name: string
+    slug: string
+    icon: string | null
+    color: string | null
+  } | null
   _count: {
-    pages: number
-    stars: number
+    guides: number
   }
 }
 
 export default async function HomePage() {
-  // Buscar repositórios públicos populares
-  const popularRepos = await prisma.manualRepo.findMany({
+  // Buscar bibliotecas públicas
+  const libraries = await prisma.library.findMany({
+    where: {
+      visibility: 'PUBLIC'
+    },
+    include: {
+      _count: {
+        select: {
+          repositories: true
+        }
+      }
+    },
+    orderBy: {
+      order: 'asc'
+    },
+    take: 6
+  });
+
+  // Buscar repositórios populares
+  const popularRepositories = await prisma.repository.findMany({
     where: {
       visibility: 'PUBLIC'
     },
@@ -38,10 +69,17 @@ export default async function HomePage() {
           name: true
         }
       },
+      library: {
+        select: {
+          name: true,
+          slug: true,
+          icon: true,
+          color: true
+        }
+      },
       _count: {
         select: {
-          pages: true,
-          stars: true
+          guides: true
         }
       }
     },
@@ -111,30 +149,110 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {popularRepos.length > 0 && (
+      {/* Bibliotecas */}
+      {libraries.length > 0 && (
         <section className="mb-16">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-4">Repositórios Populares</h2>
+            <h2 className="text-3xl font-bold mb-4">Explore por Categoria</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Explore os repositórios mais populares da comunidade
+              Navegue pelas bibliotecas organizadas por tema
             </p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {(popularRepos as PopularRepo[]).map((repo) => (
-              <RepoCard
-                key={repo.id}
-                repo={{
-                  ...repo,
-                  pagesCount: repo._count.pages,
-                  starsCount: repo._count.stars
-                }}
-              />
+            {(libraries as LibraryWithStats[]).map((library) => (
+              <Card key={library.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
+                <Link href={`/library/${library.slug}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div 
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl"
+                        style={{ backgroundColor: library.color || '#3B82F6' }}
+                      >
+                        {library.icon || '📚'}
+                      </div>
+                      <div className="flex-1">
+                        <CardTitle className="group-hover:text-primary transition-colors">
+                          {library.name}
+                        </CardTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {library._count.repositories} repositórios
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>
+                      {library.description}
+                    </CardDescription>
+                  </CardContent>
+                </Link>
+              </Card>
             ))}
           </div>
           <div className="text-center mt-8">
             <Button asChild variant="outline">
-              <Link href="/explore">Ver Todos os Repositórios</Link>
+              <Link href="/explore">Ver Todas as Bibliotecas</Link>
             </Button>
+          </div>
+        </section>
+      )}
+
+      {/* Repositórios Populares */}
+      {popularRepositories.length > 0 && (
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Repositórios Populares</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Os repositórios mais curtidos da comunidade
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {(popularRepositories as PopularRepository[]).map((repo) => (
+              <Card key={repo.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
+                <Link href={`/${repo.owner.username}/${repo.slug}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <CardTitle className="group-hover:text-primary transition-colors">
+                        {repo.name}
+                      </CardTitle>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <BookOpen className="h-4 w-4" />
+                        {repo._count.guides}
+                      </div>
+                    </div>
+                    {repo.library && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{repo.library.icon || '📁'}</span>
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs"
+                          style={{ 
+                            borderColor: repo.library.color || '#3B82F6',
+                            color: repo.library.color || '#3B82F6'
+                          }}
+                        >
+                          {repo.library.name}
+                        </Badge>
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-3">
+                      {repo.description}
+                    </CardDescription>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>por {repo.owner.name || repo.owner.username}</span>
+                      <div className="flex items-center gap-1">
+                        <span>⭐</span>
+                        <span>{repo.starsCount}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Link>
+              </Card>
+            ))}
           </div>
         </section>
       )}

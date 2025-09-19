@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
 type StarredRepo = {
-  repo: {
+  repository: {
     id: string
     name: string
     slug: string
@@ -17,7 +17,7 @@ type StarredRepo = {
       name: string | null
     }
     _count: {
-      pages: number
+      guides: number
     }
   }
 }
@@ -35,7 +35,7 @@ export async function GET() {
         userId: session.user.id
       },
       select: {
-        repo: {
+        repository: {
           select: {
             id: true,
             name: true,
@@ -52,7 +52,7 @@ export async function GET() {
             },
             _count: {
               select: {
-                pages: true
+                guides: true
               }
             }
           }
@@ -65,7 +65,7 @@ export async function GET() {
 
     // Filtrar apenas repositórios visíveis ao usuário
     const visibleRepos = (starredRepos as StarredRepo[])
-      .map(star => star.repo)
+      .map(star => star.repository)
       .filter(repo => {
         // Se é público, sempre visível
         if (repo.visibility === 'PUBLIC') return true

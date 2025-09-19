@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const slug = slugify(validatedData.name)
     
     // Verificar se já existe um repo com o mesmo slug para este usuário
-    const existingRepo = await prisma.manualRepo.findUnique({
+    const existingRepo = await prisma.repository.findUnique({
       where: {
         ownerId_slug: {
           ownerId: session.user.id,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const repo = await prisma.manualRepo.create({
+    const repo = await prisma.repository.create({
       data: {
         name: validatedData.name,
         slug: slug,

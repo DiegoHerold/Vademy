@@ -21,13 +21,13 @@ type RepoWithOwner = {
   }
 }
 
-type PageWithRepo = {
+type GuideWithRepo = {
   id: string
   title: string
-  path: string
+  slug: string
   createdAt: Date
   updatedAt: Date
-  repo: {
+  repository: {
     id: string
     name: string
     slug: string
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = `%${query.trim()}%`
 
     // Buscar repositórios
-    const allRepos = await prisma.manualRepo.findMany({
+    const allRepos = await prisma.repository.findMany({
       where: {
         OR: [
           {
@@ -85,11 +85,11 @@ export async function GET(request: NextRequest) {
     // Buscar páginas (apenas em repos que o usuário pode ver)
     const visibleRepoIds = visibleRepos.map(repo => repo.id)
     
-    const pages = visibleRepoIds.length > 0 ? await prisma.page.findMany({
+    const guides = visibleRepoIds.length > 0 ? await prisma.guide.findMany({
       where: {
         AND: [
           {
-            repoId: {
+            repositoryId: {
               in: visibleRepoIds
             }
           },
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         ]
       },
       include: {
-        repo: {
+        repository: {
           select: {
             id: true,
             name: true,
@@ -132,16 +132,16 @@ export async function GET(request: NextRequest) {
         createdAt: repo.createdAt,
         updatedAt: repo.updatedAt
       })),
-      pages: (pages as PageWithRepo[]).map(page => ({
-        id: page.id,
-        title: page.title,
-        path: page.path,
-        repo: page.repo,
-        createdAt: page.createdAt,
-        updatedAt: page.updatedAt
+      guides: (guides as any[]).map(guide => ({
+        id: guide.id,
+        title: guide.title,
+        slug: guide.slug,
+        repository: guide.repository,
+        createdAt: guide.createdAt,
+        updatedAt: guide.updatedAt
       })),
       query: query.trim(),
-      totalResults: visibleRepos.length + pages.length
+      totalResults: visibleRepos.length + guides.length
     }
 
     return NextResponse.json(results)

@@ -21,7 +21,7 @@ export async function POST(
     const repoId = params.id
     
     // Verificar se o repo existe e se o usuário pode vê-lo
-    const repo = await prisma.manualRepo.findUnique({
+    const repo = await prisma.repository.findUnique({
       where: { id: repoId }
     })
     
@@ -42,9 +42,9 @@ export async function POST(
     // Verificar se já existe star
     const existingStar = await prisma.star.findUnique({
       where: {
-        userId_repoId: {
+        userId_repositoryId: {
           userId: session.user.id,
-          repoId: repoId
+          repositoryId: repoId
         }
       }
     })
@@ -57,13 +57,13 @@ export async function POST(
       await prisma.$transaction([
         prisma.star.delete({
           where: {
-            userId_repoId: {
+            userId_repositoryId: {
               userId: session.user.id,
-              repoId: repoId
+              repositoryId: repoId
             }
           }
         }),
-        prisma.manualRepo.update({
+        prisma.repository.update({
           where: { id: repoId },
           data: {
             starsCount: {
@@ -80,10 +80,10 @@ export async function POST(
         prisma.star.create({
           data: {
             userId: session.user.id,
-            repoId: repoId
+            repositoryId: repoId
           }
         }),
-        prisma.manualRepo.update({
+        prisma.repository.update({
           where: { id: repoId },
           data: {
             starsCount: {

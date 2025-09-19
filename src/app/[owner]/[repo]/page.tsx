@@ -30,7 +30,9 @@ interface RepositoryPageProps {
 type PageType = {
   id: string
   title: string
-  path: string
+  slug: string
+  path?: string // Para compatibilidade com componentes antigos
+  contentMd: string
   order: number
   createdAt: Date
   updatedAt: Date
@@ -42,7 +44,7 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
   const session = await getServerSession(authOptions)
 
   // Buscar o repositório
-  const repository = await prisma.manualRepo.findFirst({
+  const repository = await prisma.repository.findFirst({
     where: {
       slug: decodeURIComponent(repo),
       owner: {
@@ -57,7 +59,7 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
           name: true
         }
       },
-      pages: {
+      guides: {
         orderBy: {
           order: 'asc'
         }
@@ -65,7 +67,7 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
       _count: {
         select: {
           stars: true,
-          pages: true
+          guides: true
         }
       }
     }
@@ -85,9 +87,9 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
   if (session?.user?.id) {
     const star = await prisma.star.findUnique({
       where: {
-        userId_repoId: {
+        userId_repositoryId: {
           userId: session.user.id,
-          repoId: repository.id
+          repositoryId: repository.id
         }
       }
     })
@@ -96,31 +98,27 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
 
   const isOwner = session?.user?.id === repository.ownerId
 
-  // Se um path específico foi solicitado, buscar a página
-  let currentPage = null
+  // Se um path específico foi solicitado, buscar o guia
+  let currentGuide = null
   if (pagePath) {
-    currentPage = await prisma.page.findUnique({
+    currentGuide = await prisma.guide.findFirst({
       where: {
-        repoId_path: {
-          repoId: repository.id,
-          path: pagePath
-        }
+        repositoryId: repository.id,
+        slug: pagePath.replace('.md', '').replace('/', '-')
       }
     })
   }
 
-  // Buscar README.md do repositório
-  const readmePage = await prisma.page.findUnique({
+  // Buscar README.md do repositório (guia principal)
+  const readmeGuide = await prisma.guide.findFirst({
     where: {
-      repoId_path: {
-        repoId: repository.id,
-        path: 'README.md'
-      }
+      repositoryId: repository.id,
+      isReadme: true
     }
   })
 
   // Criar breadcrumb baseado no contexto
-  const breadcrumbItems = currentPage 
+  const breadcrumbItems = currentGuide 
     ? [
         {
           type: 'home' as const,
@@ -140,9 +138,9 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
         },
         {
           type: 'page' as const,
-          label: currentPage.title,
-          href: `/${repository.owner.username}/${repository.slug}?path=${encodeURIComponent(currentPage.path)}`,
-          badge: currentPage.path === 'README.md' ? 'README' : undefined,
+          label: currentGuide.title,
+          href: `/${repository.owner.username}/${repository.slug}?path=${encodeURIComponent(currentGuide.slug)}`,
+          badge: currentGuide.isReadme ? 'README' : undefined,
         },
       ]
     : [
@@ -195,17 +193,29 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
       <div className="container mx-auto px-4 py-6">
         <RepositoryPageClient
           repository={repository}
-          currentPagePath={currentPage?.path}
+          currentPagePath={currentGuide?.slug}
           isOwner={isOwner}
         >
 
-        {/* Se uma página específica foi solicitada, mostrar ela */}
-        {currentPage ? (
+        {/* Se um guia específico foi solicitado, mostrar ele */}
+        {currentGuide ? (
           <PageViewer 
-            page={currentPage}
+            page={{
+              id: currentGuide.id,
+              title: currentGuide.title,
+              path: currentGuide.slug + '.md',
+              contentMd: currentGuide.contentMd,
+              createdAt: currentGuide.createdAt,
+              updatedAt: currentGuide.updatedAt
+            }}
             repository={repository}
             isOwner={isOwner}
-            allPages={repository.pages as PageType[]}
+            allPages={repository.guides.map(guide => ({
+              id: guide.id,
+              title: guide.title,
+              path: guide.slug + '.md',
+              order: guide.order
+            }))}
           />
         ) : (
           /* Conteúdo padrão do repositório */
@@ -213,16 +223,22 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
             {/* README Section */}
             <ReadmeViewer 
               repository={repository}
-              readmePage={readmePage}
+              readmePage={readmeGuide ? {
+                id: readmeGuide.id,
+                title: readmeGuide.title,
+                path: 'README.md',
+                contentMd: readmeGuide.contentMd,
+                updatedAt: readmeGuide.updatedAt
+              } : null}
               isOwner={isOwner}
             />
 
             {/* Repository Content */}
-            <Tabs defaultValue="pages" className="space-y-6">
+            <Tabs defaultValue="guides" className="space-y-6">
               <TabsList>
-                <TabsTrigger value="pages" className="flex items-center gap-2">
+                <TabsTrigger value="guides" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Páginas
+                  Guias
                 </TabsTrigger>
                 <TabsTrigger value="about" className="flex items-center gap-2">
                   <Code className="h-4 w-4" />
@@ -230,10 +246,18 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="pages">
+              <TabsContent value="guides">
                 <PagesManager
                   repository={repository}
-                  pages={repository.pages as PageType[]}
+                  pages={repository.guides.map(guide => ({
+                    id: guide.id,
+                    title: guide.title,
+                    path: guide.slug + '.md',
+                    contentMd: guide.contentMd,
+                    order: guide.order,
+                    createdAt: guide.createdAt,
+                    updatedAt: guide.updatedAt
+                  }))}
                   isOwner={isOwner}
                 />
               </TabsContent>
@@ -254,22 +278,22 @@ export default async function RepositoryPage({ params, searchParams }: Repositor
                       <ul>
                         <li><strong>Criado por:</strong> {repository.owner.name || repository.owner.username}</li>
                         <li><strong>Visibilidade:</strong> {repository.visibility === 'PUBLIC' ? 'Público' : 'Privado'}</li>
-                        <li><strong>Páginas:</strong> {repository._count.pages}</li>
+                        <li><strong>Guias:</strong> {repository._count.guides}</li>
                         <li><strong>Stars:</strong> {repository.starsCount}</li>
                         <li><strong>Última atualização:</strong> {new Date(repository.updatedAt).toLocaleDateString('pt-BR')}</li>
                       </ul>
                       
-                      {repository.pages.length > 0 && (
+                      {repository.guides.length > 0 && (
                         <>
-                          <h3>Páginas disponíveis</h3>
+                          <h3>Guias disponíveis</h3>
                           <ul>
-                            {(repository.pages as PageType[]).map((page) => (
-                              <li key={page.id}>
+                            {(repository.guides as PageType[]).map((guide) => (
+                              <li key={guide.id}>
                                 <Link 
-                                  href={`/${repository.owner.username}/${repository.slug}?path=${encodeURIComponent(page.path)}`}
+                                  href={`/${repository.owner.username}/${repository.slug}?path=${encodeURIComponent(guide.slug)}`}
                                   className="text-primary hover:underline"
                                 >
-                                  {page.title}
+                                  {guide.title}
                                 </Link>
                               </li>
                             ))}

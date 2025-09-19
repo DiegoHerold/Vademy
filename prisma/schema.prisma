@@ -22,66 +22,99 @@ model User {
   createdAt    DateTime @default(now())
   accounts     Account[]
   sessions     Session[]
-  repos        ManualRepo[] @relation("UserRepos")
+  libraries    Library[] @relation("UserLibraries")
+  repos        Repository[] @relation("UserRepositories")
+  guides       Guide[] @relation("UserGuides")
   stars        Star[]
   progresses   Progress[]
 }
 
-model ManualRepo {
+// Bibliotecas - Agrupadores temáticos de alto nível
+model Library {
   id          String     @id @default(cuid())
   ownerId     String
-  owner       User       @relation("UserRepos", fields: [ownerId], references: [id])
-  name        String
+  owner       User       @relation("UserLibraries", fields: [ownerId], references: [id])
+  name        String     // Ex: "Frontend", "Backend", "DevOps"
+  slug        String
+  description String?
+  icon        String?    // Ícone da biblioteca
+  color       String?    // Cor tema da biblioteca
+  visibility  Visibility @default(PUBLIC)
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  repositories Repository[]
+  @@unique([ownerId, slug])
+  @@index([visibility, order])
+}
+
+// Repositórios - Coleções de guias relacionados a um tema/projeto
+model Repository {
+  id          String     @id @default(cuid())
+  ownerId     String
+  owner       User       @relation("UserRepositories", fields: [ownerId], references: [id])
+  libraryId   String?    // Opcional - pode ser independente
+  library     Library?   @relation(fields: [libraryId], references: [id])
+  name        String     // Ex: "react-avancado", "vue-fundamentos"
   slug        String
   description String?
   visibility  Visibility @default(PUBLIC)
   starsCount  Int        @default(0)
+  order       Int        @default(0) // Ordem dentro da biblioteca
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  pages       Page[]
+  guides      Guide[]
   stars       Star[]
   progresses  Progress[]
   @@unique([ownerId, slug])
   @@index([visibility, starsCount])
+  @@index([libraryId, order])
 }
 
-model Page {
-  id        String    @id @default(cuid())
-  repoId    String
-  repo      ManualRepo @relation(fields: [repoId], references: [id])
-  path      String
-  title     String
-  contentMd String
-  order     Int        @default(0)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  progresses Progress[]
-  @@unique([repoId, path])
-  @@index([repoId, order])
+// Guias - Páginas Markdown individuais (README.md)
+model Guide {
+  id           String     @id @default(cuid())
+  ownerId      String
+  owner        User       @relation("UserGuides", fields: [ownerId], references: [id])
+  repositoryId String?    // Opcional - pode ser independente
+  repository   Repository? @relation(fields: [repositoryId], references: [id])
+  title        String     // Ex: "Introdução ao React", "Hooks Essenciais"
+  slug         String
+  description  String?
+  contentMd    String     // Conteúdo Markdown
+  order        Int        @default(0) // Ordem dentro do repositório
+  visibility   Visibility @default(PUBLIC)
+  isReadme     Boolean    @default(false) // Se é o README principal do repositório
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  progresses   Progress[]
+  @@unique([ownerId, slug])
+  @@index([visibility, updatedAt])
+  @@index([repositoryId, order])
 }
 
 model Star {
-  userId   String
-  user     User       @relation(fields: [userId], references: [id])
-  repoId   String
-  repo     ManualRepo @relation(fields: [repoId], references: [id])
-  createdAt DateTime  @default(now())
-  @@id([userId, repoId])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  createdAt    DateTime   @default(now())
+  @@id([userId, repositoryId])
 }
 
 model Progress {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   userId         String
   user           User       @relation(fields: [userId], references: [id])
-  repoId         String
-  repo           ManualRepo @relation(fields: [repoId], references: [id])
-  pageId         String
-  page           Page       @relation(fields: [pageId], references: [id])
+  repositoryId   String
+  repository     Repository @relation(fields: [repositoryId], references: [id])
+  guideId        String
+  guide          Guide      @relation(fields: [guideId], references: [id])
   completedSteps Int        @default(0)
   totalSteps     Int        @default(0)
   updatedAt      DateTime   @updatedAt
-  @@unique([userId, repoId, pageId])
-  @@index([userId, repoId, pageId])
+  @@unique([userId, repositoryId, guideId])
+  @@index([userId, repositoryId, guideId])
 }
 
 // Tabelas do NextAuth (PrismaAdapter)

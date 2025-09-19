@@ -19,7 +19,7 @@ type UserRepo = {
     name: string | null
   }
   _count: {
-    pages: number
+    guides: number
   }
 }
 
@@ -49,7 +49,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   }
 
   // Buscar repositórios públicos do usuário
-  const repos = await prisma.manualRepo.findMany({
+  const repos = await prisma.repository.findMany({
     where: {
       ownerId: user.id,
       visibility: 'PUBLIC'
@@ -70,7 +70,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       },
       _count: {
         select: {
-          pages: true
+          guides: true
         }
       }
     },
@@ -88,13 +88,13 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   // Transformar dados para o componente RepoCard
   const reposWithPageCount = (repos as UserRepo[]).map(repo => ({
     ...repo,
-    pagesCount: repo._count.pages
+    pagesCount: repo._count.guides
   }))
 
   // Buscar páginas populares dos repositórios públicos
-  const popularPages = await prisma.page.findMany({
+  const popularGuides = await prisma.guide.findMany({
     where: {
-      repo: {
+      repository: {
         ownerId: user.id,
         visibility: 'PUBLIC'
       }
@@ -102,9 +102,9 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     select: {
       id: true,
       title: true,
-      path: true,
+      slug: true,
       updatedAt: true,
-      repo: {
+      repository: {
         select: {
           name: true,
           slug: true,
@@ -138,7 +138,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
               <div className="sticky top-6">
                 <UserNav
                   repositories={reposWithPageCount}
-                  pages={popularPages}
+                  pages={popularGuides.filter(guide => guide.repository !== null) as any}
                   username={user.username}
                 />
               </div>
@@ -147,7 +147,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             {/* Conteúdo principal */}
             <div className="lg:col-span-3 space-y-8">
               {/* Seção de Guias Recentes */}
-              {popularPages.length > 0 && (
+              {popularGuides.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -159,9 +159,9 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {popularPages.map((page) => (
+                {popularGuides.map((guide) => (
                   <div
-                    key={page.id}
+                    key={guide.id}
                     className="group p-4 border rounded-lg hover:shadow-md transition-all hover:border-primary/50 bg-card"
                   >
                     <div className="flex items-start gap-3">
@@ -170,15 +170,15 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold group-hover:text-primary transition-colors line-clamp-2">
-                          <a href={`/${page.repo.owner.username}/${page.repo.slug}?path=${encodeURIComponent(page.path)}`}>
-                            {page.title}
+                          <a href={`/${guide.repository?.owner.username}/${guide.repository?.slug}?path=${encodeURIComponent(guide.slug)}`}>
+                            {guide.title}
                           </a>
                         </h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {page.repo.name}
+                          {guide.repository?.name}
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Atualizado {new Date(page.updatedAt).toLocaleDateString('pt-BR')}
+                          Atualizado {new Date(guide.updatedAt).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
                     </div>

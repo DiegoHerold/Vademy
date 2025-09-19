@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const repos = await prisma.manualRepo.findMany({
+    const repos = await prisma.repository.findMany({
       where: {
         ownerId: session.user.id
       },
@@ -31,7 +31,7 @@ export async function GET() {
         },
         _count: {
           select: {
-            pages: true
+            guides: true
           }
         }
       },
